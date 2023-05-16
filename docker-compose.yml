@@ -1,0 +1,44 @@
+version: '3'
+
+services:
+  load_balancer:
+    image: nginx
+    ports:
+      - 3306:3306
+    volumes:
+      - ./conf/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./conf/certs:/etc/nginx/cert
+    depends_on:
+      - master_db
+      - slave_db
+
+  master_db:
+    image: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=books
+    volumes:
+      - ./mysql/master:/var/lib/mysql
+      - ./conf/certs:/etc/mysql/certs
+      - ./conf/master/my.cnf:/etc/my.cnf
+
+  slave_db:
+    image: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=books
+      - MYSQL_MASTER_HOST=master_db
+      - MYSQL_MASTER_USER=root
+      - MYSQL_MASTER_PASSWORD=root
+      - MYSQL_REPLICA_USER=replica_user
+      - MYSQL_REPLICA_PASSWORD=root
+    volumes:
+      - ./mysql/slave:/var/lib/mysql
+      - ./conf/certs:/etc/mysql/certs
+      - ./conf/slave/my.cnf:/etc/my.cnf
+  debian1:
+    image: debian:latest
+    container_name: debian1
+    command: bash -c "apt-get update && apt-get install -y default-mysql-server && tail -f /dev/null"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
